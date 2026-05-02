@@ -5,6 +5,7 @@ RUN apt-get update && apt-get install -y \
     ffmpeg \
     libffi-dev \
     libnacl-dev \
+    libopus0 \
     python3-dev \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
