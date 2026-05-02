@@ -3395,9 +3395,9 @@ async def start_status_server():
         app.router.add_route('OPTIONS', '/', health_check)
         runner = web.AppRunner(app)
         await runner.setup()
-        site = web.TCPSite(runner, '0.0.0.0', int(os.environ.get("PORT", 10000)))
+        site = web.TCPSite(runner, '127.0.0.1', 8765)
         await site.start()
-        log.info(f"Website health check server running on port {os.environ.get('PORT', 10000)}")
+        log.info("Website health check server running on http://127.0.0.1:8765")
     except Exception as e:
         log.error(f"Failed to start status web server: {e}")
 
