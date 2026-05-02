@@ -1,6 +1,8 @@
-discord.py[voice]>=2.4.0
+discord.py[voice]>=2.7.0
+davey
 edge-tts
 yt-dlp>=2024.4.9
 spotipy
 aiohttp
 python-dotenv
+PyNaCl

@@ -808,6 +808,26 @@ class TTSEngine:
 # -------------------------------------------------
 # 4.  MUSIC SYSTEM - IMPROVED FFMPEG CONFIG
 # -------------------------------------------------
+
+# --- YouTube Cookie Support ---
+# Write cookies from env var to a file so yt-dlp can use them
+COOKIES_FILE = Path("cookies.txt")
+
+def setup_youtube_cookies():
+    """Write YouTube cookies from environment variable to cookies.txt"""
+    cookies_content = os.getenv("YOUTUBE_COOKIES", "")
+    if cookies_content:
+        try:
+            # The env var contains the full Netscape cookie file content
+            COOKIES_FILE.write_text(cookies_content)
+            log.info(f"YouTube cookies written to {COOKIES_FILE} ({len(cookies_content)} bytes)")
+            return True
+        except Exception as e:
+            log.error(f"Failed to write cookies file: {e}")
+    return False
+
+has_cookies = setup_youtube_cookies()
+
 ytdl_options = {
     'format': 'bestaudio/best',
     'restrictfilenames': True,
@@ -822,20 +842,20 @@ ytdl_options = {
     'prefer_ffmpeg': True,
     'extractor_args': {
         'youtube': {
-            'player_client': ['web', 'mweb', 'android', 'ios', 'tv', 'tvhtml5embedded'],
-            'skip': ['dash', 'hls'],
-            # Support PO-Token if provided in env
-            'po_token': [os.getenv("YOUTUBE_PO_TOKEN")] if os.getenv("YOUTUBE_PO_TOKEN") else []
+            'player_client': ['android', 'web'],
         }
     },
     'http_headers': {
-        'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.5 Mobile/15E148 Safari/604.1',
-        'Accept': '*/*',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
         'Accept-Language': 'en-US,en;q=0.9',
     },
     'geo_bypass': True,
-    'noprogress': True,
 }
+
+# Add cookies if available
+if has_cookies:
+    ytdl_options['cookiefile'] = str(COOKIES_FILE)
+    log.info("yt-dlp will use cookies for YouTube authentication")
 
 # OPTIMIZED FFMPEG OPTIONS FOR STREAMING - Extended reconnect times
 ffmpeg_options = {
@@ -855,32 +875,27 @@ class YTDLSource(discord.PCMVolumeTransformer):
         loop = loop or asyncio.get_running_loop()
         
         def extract_info():
-            clients = [['web', 'mweb'], ['android'], ['ios'], ['tv']]
-            last_err = None
-            
-            for client_list in clients:
-                try:
-                    opts = ytdl_options.copy()
-                    opts['extractor_args'] = {'youtube': {'player_client': client_list}}
-                    with yt_dlp.YoutubeDL(opts) as ydl:
-                        info = ydl.extract_info(url, download=False)
-                        if info:
-                            return info
-                except Exception as e:
-                    last_err = e
-                    log.warning(f"YT-DLP extraction failed with clients {client_list}: {e}")
-                    continue
-            
-            log.error(f"YT-DLP extraction failed after all attempts: {last_err}")
-            return None
+            try:
+                with yt_dlp.YoutubeDL(ytdl_options) as ydl:
+                    info = ydl.extract_info(url, download=False)
+                    if not info:
+                        log.error("YT-DLP returned no info for: %s", url[:100])
+                        return None
+                    return info
+            except Exception as e:
+                log.error("YT-DLP extraction error for '%s': %s", url[:50], e)
+                return None
         
         data = await loop.run_in_executor(None, extract_info)
         
         if not data:
-            raise Exception("Could not extract audio info")
+            raise Exception("Could not extract audio info. YouTube may be blocking this server.")
             
         if 'entries' in data:
-            data = data['entries'][0]
+            entries = data['entries']
+            if not entries or len(entries) == 0:
+                raise Exception("No results found for your search")
+            data = entries[0]
             if not data:
                 raise Exception("No entries found in playlist/search results")
 
