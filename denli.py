@@ -809,20 +809,28 @@ class TTSEngine:
 # 4.  MUSIC SYSTEM - IMPROVED FFMPEG CONFIG
 # -------------------------------------------------
 ytdl_options = {
-    'format': 'bestaudio[ext=webm]/bestaudio[ext=m4a]/bestaudio/best',  # Prefer formats ffmpeg handles well
+    'format': 'bestaudio/best',
     'restrictfilenames': True,
     'noplaylist': True,
     'nocheckcertificate': True,
-    'ignoreerrors': False,  # Don't ignore errors - we need to know what's happening
+    'ignoreerrors': False,
     'logtostderr': False,
     'quiet': True,
-    'no_warnings': True,  # Suppress yt-dlp warnings
-    'default_search': 'ytsearch',  # Explicit YouTube search
+    'no_warnings': True,
+    'default_search': 'ytsearch',
     'source_address': '0.0.0.0',
     'prefer_ffmpeg': True,
-    'extractor_args': {'youtube': {'player_client': ['android', 'web']}},  # Better extraction
+    # Updated extractor args to bypass bot detection
+    'extractor_args': {
+        'youtube': {
+            'player_client': ['web', 'mweb', 'android', 'ios'],
+            'skip': ['dash', 'hls']
+        }
+    },
     'http_headers': {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
+        'Accept-Language': 'en-US,en;q=0.9',
     },
 }
 
@@ -844,16 +852,24 @@ class YTDLSource(discord.PCMVolumeTransformer):
         loop = loop or asyncio.get_running_loop()
         
         def extract_info():
-            try:
-                with yt_dlp.YoutubeDL(ytdl_options) as ydl:
-                    info = ydl.extract_info(url, download=False)  # Always stream, never download
-                    if not info:
-                        log.error("YT-DLP returned no info for URL: %s", url[:100])
-                        return None
-                    return info
-            except Exception as e:
-                log.error("YT-DLP extraction error for '%s': %s", url[:50], e)
-                return None
+            clients = [['web', 'mweb'], ['android'], ['ios'], ['tv']]
+            last_err = None
+            
+            for client_list in clients:
+                try:
+                    opts = ytdl_options.copy()
+                    opts['extractor_args'] = {'youtube': {'player_client': client_list}}
+                    with yt_dlp.YoutubeDL(opts) as ydl:
+                        info = ydl.extract_info(url, download=False)
+                        if info:
+                            return info
+                except Exception as e:
+                    last_err = e
+                    log.warning(f"YT-DLP extraction failed with clients {client_list}: {e}")
+                    continue
+            
+            log.error(f"YT-DLP extraction failed after all attempts: {last_err}")
+            return None
         
         data = await loop.run_in_executor(None, extract_info)
         
