@@ -820,18 +820,21 @@ ytdl_options = {
     'default_search': 'ytsearch',
     'source_address': '0.0.0.0',
     'prefer_ffmpeg': True,
-    # Updated extractor args to bypass bot detection
     'extractor_args': {
         'youtube': {
-            'player_client': ['web', 'mweb', 'android', 'ios'],
-            'skip': ['dash', 'hls']
+            'player_client': ['web', 'mweb', 'android', 'ios', 'tv', 'tvhtml5embedded'],
+            'skip': ['dash', 'hls'],
+            # Support PO-Token if provided in env
+            'po_token': [os.getenv("YOUTUBE_PO_TOKEN")] if os.getenv("YOUTUBE_PO_TOKEN") else []
         }
     },
     'http_headers': {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36',
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
+        'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.5 Mobile/15E148 Safari/604.1',
+        'Accept': '*/*',
         'Accept-Language': 'en-US,en;q=0.9',
     },
+    'geo_bypass': True,
+    'noprogress': True,
 }
 
 # OPTIMIZED FFMPEG OPTIONS FOR STREAMING - Extended reconnect times
