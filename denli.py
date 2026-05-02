@@ -842,7 +842,7 @@ ytdl_options = {
     'prefer_ffmpeg': True,
     'extractor_args': {
         'youtube': {
-            'player_client': ['android', 'web'],
+            'player_client': ['tv', 'web', 'mweb', 'android', 'ios'],
         }
     },
     'http_headers': {
