@@ -1,0 +1,6 @@
+discord.py
+edge-tts
+yt-dlp
+spotipy
+aiohttp
+python-dotenv
